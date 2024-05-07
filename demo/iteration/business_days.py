@@ -3,7 +3,7 @@ from datetime import timedelta
 import holidays
 
 
-def business_days(start_date, end_date) -> [] :
+def business_days(start_date, end_date) -> list[date] :
     us_pr_holidays = holidays.country_holidays('US', subdiv='PR')
     working_days = []
     for n in range(int((end_date - start_date).days)):
