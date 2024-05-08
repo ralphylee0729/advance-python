@@ -3,7 +3,7 @@ from pathlib import Path
 from rates_api.rates_data import load_rates
 import math
 
-def main() -> None:
+def start_rates_api() -> None:
     app = Flask(__name__)
 
     rates_file_path = Path("rates_api/rates.csv")
@@ -36,6 +36,8 @@ def main() -> None:
 
                 #print(rate.items())
 
+                #create country_rates dictionary by taking each key-value pair of rate dictionary( assining key to country_code and value ot country_rate ) set the
+                # new key-value pair with (country_code, country_rate / rate[base_country]
                 country_rates = {
                     country_code: country_rate / rate[base_country]
                     for (country_code, country_rate) in rate.items()
@@ -57,4 +59,4 @@ def main() -> None:
     app.run(port=8900)
 
 if __name__ == "__main__":
-    main()
+    start_rates_api()
