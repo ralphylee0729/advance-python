@@ -4,6 +4,8 @@ from datetime import date
 from rates_api.rates_data import load_rates
 import math
 import re
+from multiprocessing.sharedctypes import Synchronized
+from typing import cast
 
 rate_history = load_rates("rates_api/rates.csv")
 
@@ -13,13 +15,34 @@ client_command_pattern = (
     r"(?P<currency_symbol>[A-Z]{3})$"
 )
 
+class client_counter:
+    def __init__(self):
+        self.counter = 0
+        self.lock = lock = threading.Lock()
+    def increment(self) -> None:
+        self.lock.acquire()
+        self.counter = self.counter + 1
+        self.lock.release()
+    def decrement(self) -> None:
+        self.lock.acquire()
+        self.counter = self.counter - 1
+        self.lock.release()
+    def count(self) -> int:
+        return self.counter
+
+
 class rate_handler(threading.Thread):
     """some thread"""
 
-    def __init__(self, conn: socket):
+    def __init__(self, conn: socket, counter: Synchronized) :
         threading.Thread.__init__(self)
         self.conn = conn
         self.__client_command_regex = re.compile(client_command_pattern)
+        self.counter = counter
+        with counter.get_lock():
+            counter.value = counter.value + 1
+
+
 
     # the run method is what runs when you call "start"
     def run(self) -> None:
@@ -29,6 +52,7 @@ class rate_handler(threading.Thread):
         while True:
             message =self.conn.recv(2048).decode("UTF-8")
             if not message:
+                print("client disconected")
                 break
 
             command_match = self.__client_command_regex.match(message)
@@ -88,3 +112,6 @@ class rate_handler(threading.Thread):
 
 
             self.conn.sendall(message.encode("UTF-8"))
+
+        with self.counter.get_lock():
+            self.counter.value = self.counter.value - 1

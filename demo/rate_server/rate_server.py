@@ -6,12 +6,14 @@ import sys
 import socket
 import threading
 from rate_server.rate_handler import rate_handler
+from rate_server.rate_handler import client_counter
+from multiprocessing.sharedctypes import Synchronized
+from typing import cast
 
 #from rate_server.api_server import api_server
-#from rates_api.rates_app import start_rates_api
+#from rates_api.rates_app import start_rates_api   
 
-
-def rate_server(host: str, port: int) -> None:
+def rate_server(host: str, port: int, counter:Synchronized) -> None:
     """rate server"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_server:
         socket_server.bind((host, port))
@@ -19,17 +21,17 @@ def rate_server(host: str, port: int) -> None:
 
         while True:
             conn,addr=socket_server.accept()
-            handler = rate_handler(conn)
+            handler = rate_handler(conn, counter)
             handler.start()
 
 
-def command_start_server(server_process: mp.Process | None, host: str, port: int) -> mp.Process:
+def command_start_server(server_process: mp.Process | None, host: str, port: int, counter:Synchronized) -> mp.Process:
     """command start server"""
 
     if server_process and server_process.is_alive():
         print("server is already running")
     else:
-        server_process = mp.Process(target=rate_server, args=(host, port))
+        server_process = mp.Process(target=rate_server, args=(host, port, counter))
         server_process.start()
         print("server started")
 
@@ -59,16 +61,19 @@ def main() -> None:
         server_process: Optional[mp.Process] = None
         host="127.0.0.1"
         port=5030
+        counter: Synchronized = cast(Synchronized, mp.Value("i", 0)) 
 
         while True:
             command = input("> ")
 
-            if command == "start":
-                server_process = command_start_server(server_process, host, port)
+            if command == "start":           
+                server_process = command_start_server(server_process, host, port, counter)
             elif command == "stop":
                 server_process = command_stop_server(server_process)
             elif command == "status":
-                print()
+                with counter.get_lock():
+                    print(f'Client connection count: {counter.value}')
+                #
                 #server_process.status();
                 # step 3 - add a command named "status" that outputs to the
                 # console if the server is current running or not
