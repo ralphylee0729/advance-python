@@ -3,8 +3,15 @@ import socket
 from datetime import date
 from rates_api.rates_data import load_rates
 import math
+import re
 
 rate_history = load_rates("rates_api/rates.csv")
+
+client_command_pattern = (
+    r"^(?P<command_name>[A-Z a-z]+) "
+    r"(?P<market_date>[0-9]{4}-[0-9]{2}-[0-9]{2}) "
+    r"(?P<currency_symbol>[A-Z]{3})$"
+)
 
 class rate_handler(threading.Thread):
     """some thread"""
@@ -12,6 +19,7 @@ class rate_handler(threading.Thread):
     def __init__(self, conn: socket):
         threading.Thread.__init__(self)
         self.conn = conn
+        self.__client_command_regex = re.compile(client_command_pattern)
 
     # the run method is what runs when you call "start"
     def run(self) -> None:
@@ -22,9 +30,20 @@ class rate_handler(threading.Thread):
             message =self.conn.recv(2048).decode("UTF-8")
             if not message:
                 break
+
+            command_match = self.__client_command_regex.match(message)
+
+            if command_match:
+                command_parts_dict = command_match.groupdict()
+                command_name = command_parts_dict["command_name"]
+                market_date = command_parts_dict["market_date"]
+                currency_symbol = command_parts_dict["currency_symbol"]
+                print(f'cmd: {command_name}')
+                print(f'date: {market_date}')
+                print(f'symbol: {currency_symbol}')
+
             #print(f"recv: {message}")
             cmd = message.split(' ')
-
             #for c in cmd :
             #    print(c)
             
@@ -56,11 +75,14 @@ class rate_handler(threading.Thread):
                             and not math.isnan(country_rate)
                         }
 
+                        if not country_rates:
+                            raise Exception("Invalid request")
+                        
                         message = f'{country_rates}'
                     
             except Exception as err:
-                #message = f'{err.args}'
-                message = "Invalid Request"
+                message = f'{str(err.args)}'
+                #message = "Invalid Request"
                 self.conn.sendall(message.encode("UTF-8"))
                 continue
 

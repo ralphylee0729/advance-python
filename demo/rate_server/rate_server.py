@@ -75,6 +75,9 @@ def main() -> None:
                 # hint: follow the command function pattern used by the other
                 # commands
             elif command == "exit":
+                if server_process and server_process.is_alive():
+                    server_process.terminate()
+                break
                 # step 4 - terminate the "server_process" if the
                 # "server_process" is an object and is alive
                 break
