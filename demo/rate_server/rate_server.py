@@ -4,9 +4,7 @@ from typing import Optional
 import multiprocessing as mp
 import sys
 import socket
-import threading
 from rate_server.rate_handler import rate_handler
-from rate_server.rate_handler import client_counter
 from multiprocessing.sharedctypes import Synchronized
 from typing import cast
 
